@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html language="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, user-scalable=no">
+<meta property="og:url" content="http://www.victorribeiro.com/syntax" />
+<meta property="og:type" content="article" />
+<meta property="og:title" content="VictorRibeiro.com" />
+<meta property="og:author" content="Victor Ribeiro" />
+<meta property="og:description" content="JavaScript Syntax Highlighter" />
+<meta property="og:image" content="http://www.victorribeiro.com/syntax/screenshot.png" />
+<meta property="og:image:width" content="1366" />
+<meta property="og:image:height" content="768" />
+<title> JavaScript Syntax highlighter - by Victor Ribeiro </title>
+<link rel="icon" type="image/x-icon" href="favicon.png" />
+<link rel="icon" type="image/png" href="favicon.png" />
+<link rel="stylesheet" type="text/css" href="css/main.css" />
+</head>
+<body>
+
+<h3> JavaScript Syntax highlighter </h3>
+
+<p>This is the source code for my game <a href="https://github.com/victorqribeiro/scramble" target="tab">Scramble</a>.
+<br>I'm using it as an example for my JavaScript syntax highlighter.</p>
+
+<code>
+let canvas, c, w, h, scale, game, tileSize, moves, status
+
+const init = () => {
+    moves = 0
+    tileSize = 96
+    createGame(3)
+    canvas = document.createElement('canvas')
+    updateCanvas()
+    const options = document.createElement('div')
+    const scrambleBtn = document.createElement('button')
+    scrambleBtn.innerText = "Scramble"
+    scrambleBtn.addEventListener('click', () => scramble(Math.floor(Math.random()*100)))
+    const cubeSize = document.createElement('select')
+    for(let i = 3; i < 6; i++){
+        const opt = document.createElement('option')
+        opt.value = i
+        opt.innerText = i
+        cubeSize.appendChild(opt)
+    }
+    cubeSize.addEventListener('change', function(){
+        const value = parseInt(this.value)
+        tileSize = 96 - (value-3) * 16
+        createGame(value)
+        updateCanvas()
+        scramble(100)
+    })
+    status = document.createElement('div')
+    status.id = 'status'
+    options.appendChild(cubeSize)
+    options.appendChild(scrambleBtn)
+    document.body.appendChild(status)
+    document.body.appendChild(canvas)
+    document.body.appendChild(options)
+    scramble(1000)
+}
+
+const updateCanvas = () => {
+    scale = window.devicePixelRatio
+    w = game[0].length * tileSize
+    h =  game.length * tileSize
+    canvas.width = w * scale
+    canvas.height = h * scale
+    canvas.style.width = `${w}px`
+    canvas.style.height = `${h}px`
+    c = canvas.getContext('2d')
+    c.scale(scale, scale)
+    c.textAlign = "center"
+    c.textBaseline = "middle"
+    const fontSize = 24
+    c.font = `${fontSize}px Arial`
+    canvas.addEventListener('click', move)
+}
+
+const createGame = num => {
+    game = Array(num).fill().map(_ => Array(num).fill(0))
+    for(let i = 0; i < num; i++){
+        for(let j = 0; j < num; j++){
+            game[i][j] = (i * num + j + 1) % (num*num)
+        }
+    }
+}
+
+const getPos = e => {return {x: Math.floor(e.offsetX / tileSize), y: Math.floor(e.offsetY / tileSize)}}
+
+const draw = () => {
+    c.clearRect(0,0,w,h)
+    c.strokeStyle = "black"
+    for(let i = 0; i < game.length; i++){
+        for(let j = 0; j < game[0].length; j++){
+            const piece = game[i][j]
+            if(!piece)
+                continue
+            const x = j * tileSize
+            const y = i * tileSize
+            c.fillStyle = "white"
+            c.fillRect(x, y, tileSize, tileSize)
+            c.strokeRect(x, y, tileSize, tileSize)
+            c.fillStyle = "black"
+            c.fillText(piece, x+tileSize/2, y+tileSize/2)
+        }
+    }
+}
+
+const findEmptyPos = () => {
+    for(let i = 0; i < game.length; i++){
+        for(let j = 0; j < game[0].length; j++){
+            if(!game[i][j]){
+                return {x: j, y: i}
+            }
+        }
+    }
+}
+
+const checkInvalid = (x, y, i, j) => 
+    (y+i < 0 || y+i > game.length-1 || x+j < 0 || x+j > game[0].length-1 || i+j === 0 || i === j)
+
+const getNeighbour = pos => {
+    let n = []
+    for(let i = -1; i < 2; i++){
+        for(let j = -1; j < 2; j++){
+            if(checkInvalid(pos.x, pos.y, i, j))
+                continue
+            if(game[pos.y+i][pos.x+j])
+                n.push({x: pos.x+j, y: pos.y+i})
+        }
+    }
+    return n
+}
+
+const scramble = (num = 1) => {
+    moves = 0
+    for(let i = 0; i < num; i++){
+        const emptyPos = findEmptyPos()
+        const n = getNeighbour(emptyPos)
+        const move = n[Math.floor(Math.random() * n.length)]
+        tradePos(move, emptyPos)
+    }
+    draw()
+    if(!checkGameWin()){
+        status.innerText = ''
+    }
+}
+
+const lookEmptyPos = pos => {
+    for(let i = -1; i < 2; i++){
+        for(let j = -1; j < 2; j++){
+            if(checkInvalid(pos.x, pos.y, i, j))
+                continue
+            if(!game[pos.y+i][pos.x+j])
+                return {x: pos.x+j, y: pos.y+i}
+        }
+    }
+    return null
+}
+
+const tradePos = (pos, newPos) => {
+    if(!newPos) 
+        return
+    game[newPos.y][newPos.x] = game[pos.y][pos.x]
+    game[pos.y][pos.x] = 0
+}
+
+const checkGameWin = () => {
+    for(let i = 0; i < game.length * game[0].length - 1; i++){
+        const x = i % game[0].length
+        const y = Math.floor( i / game[0].length )
+        if(game[y][x] != i+1)
+            return false
+    }
+    return true
+}
+
+const move = e => {
+    const pos = getPos(e)
+    const newPos = lookEmptyPos(pos)
+    tradePos(pos, newPos)
+    status.innerText = checkGameWin() ? `Win - ${moves} moves` : ''
+    draw()
+    moves += 1
+}
+
+init()
+</code>
+
+<script src="js/syntax.min.js"></script>
+
+</body>
+</html>
