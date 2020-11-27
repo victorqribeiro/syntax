@@ -11,6 +11,7 @@ code {
   display: block;
   white-space: pre;
   counter-reset: line;
+  overflow: auto;
 }
 
 code > div {
